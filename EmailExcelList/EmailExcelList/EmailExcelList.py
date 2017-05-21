@@ -1,7 +1,13 @@
+# Author: Keith Hill
+# Date: 5/20/2017
+#
+# This program accepts a config file and a CSV file and generates emails to every email address with a configured messages with included variables
+
 import os
 import configparser 
 import csv
 import smtplib
+import sys
 
 myPath = os.path.dirname(os.path.abspath(__file__))
 
@@ -14,6 +20,8 @@ except :
     print("Error: expected file emailList.csv could not be read \n")
     raise
 
+
+
 print("email file found \n")
 
 # load the config file
@@ -25,22 +33,48 @@ try :
     passwd = config.get('email','passwd')
     fromaddr = config.get('email','fromaddr')
     subject = config.get('email','subject')
-    message01 = config.get('email','message01')
-    message02 = config.get('email','message02')
 
-    message01 = message01.replace("\\n","\n")
-    message02 = message02.replace("\\n","\n")
 
 except :
     print("Error reading the config file \n")
     raise
 
+
+# check the number of messages in the config file
+messageCount = 2
+done = False
+while not done :
+
+    if config.has_option("email","message"+str(messageCount+1)) :
+        messageCount+=1
+    else : 
+        done = True
+
+
 print("config file loaded \n")
 
-# open the file and go line by line
+# open the file
 with open(myPath+"\emailList.csv") as csvfile : 
     reader = csv.DictReader(csvfile)
     
+
+    # count the number of variables in the file.  They need to be exactly messageCount-1
+    variableCount = 0
+    done = False
+    while not done :
+        try :
+            temp = reader.fieldnames[variableCount]
+            variableCount +=1
+        except :
+            variableCount -=1
+            done = True
+
+    # check that we have the right number of messages and variables
+    if (variableCount != messageCount-1) :
+        print("Error.  There are "+str(messageCount)+" messages configured and "+str(variableCount) +" variables configured. There should be one less variables than messages. \n")
+        os.system("pause")
+        sys.exit()
+
     email = reader.fieldnames[0]
     variable = reader.fieldnames[1]
 
@@ -52,6 +86,16 @@ with open(myPath+"\emailList.csv") as csvfile :
 
     # for each row, send email
     for row in reader:
+        count = 1
+
+        emailBody = ""
+        # compile email body
+        while count <= variableCount :
+            emailBody = emailBody + config.get("email","message"+str(count)) + " " + str(row[reader.fieldnames[count]]) + " "
+            count +=1
+
+        emailBody = emailBody + config.get("email","message"+str(count))
+
 
         # compose the message
         msg = "\r\n".join([
@@ -61,7 +105,7 @@ with open(myPath+"\emailList.csv") as csvfile :
             "MIME-Version: 1.0",
             "Content-type: text/html",
                 "",
-                message01 + " "  + row[variable] + " " + message02
+                emailBody
                 ])
         
         # send the email
