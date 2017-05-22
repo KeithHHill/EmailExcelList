@@ -33,22 +33,15 @@ try :
     passwd = config.get('email','passwd')
     fromaddr = config.get('email','fromaddr')
     subject = config.get('email','subject')
+    emailBody= config.get('email','body')
+    emailBody = str(emailBody)
+    
 
 
 except :
     print("Error reading the config file \n")
     raise
 
-
-# check the number of messages in the config file
-messageCount = 2
-done = False
-while not done :
-
-    if config.has_option("email","message"+str(messageCount+1)) :
-        messageCount+=1
-    else : 
-        done = True
 
 
 print("config file loaded \n")
@@ -58,7 +51,7 @@ with open(myPath+"\emailList.csv") as csvfile :
     reader = csv.DictReader(csvfile)
     
 
-    # count the number of variables in the file.  They need to be exactly messageCount-1
+    # count the number of variables in the file.  
     variableCount = 0
     done = False
     while not done :
@@ -69,15 +62,8 @@ with open(myPath+"\emailList.csv") as csvfile :
             variableCount -=1
             done = True
 
-    # check that we have the right number of messages and variables
-    if (variableCount != messageCount-1) :
-        print("Error.  There are "+str(messageCount)+" messages configured and "+str(variableCount) +" variables configured. There should be one less variables than messages. \n")
-        os.system("pause")
-        sys.exit()
-
     email = reader.fieldnames[0]
-    variable = reader.fieldnames[1]
-
+    
     # spin up email server
     server = smtplib.SMTP(svr)
     server.ehlo()
@@ -88,13 +74,13 @@ with open(myPath+"\emailList.csv") as csvfile :
     for row in reader:
         count = 1
 
-        emailBody = ""
-        # compile email body
+        emailBody= config.get('email','body')
+        emailBody = str(emailBody)
+        
+        # compile email body by inserting the variables
         while count <= variableCount :
-            emailBody = emailBody + config.get("email","message"+str(count)) + " " + str(row[reader.fieldnames[count]]) + " "
+            emailBody = emailBody.replace("||"+str(reader.fieldnames[count])+"||",str(row[reader.fieldnames[count]]))
             count +=1
-
-        emailBody = emailBody + config.get("email","message"+str(count))
 
 
         # compose the message
